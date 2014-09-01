@@ -34,3 +34,11 @@ Icon
 # Files that might appear on external disk
 .Spotlight-V100
 .Trashes
+
+
+jooglo/application/config/database.php
+jooglo/application/logs/*
+jooglo/application/cache/*
+jooglo/plugins/thumb-img/cache/*
+jooglo/uploads/images/source/*
+jooglo/uploads/images/thumbs/*

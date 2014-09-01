@@ -1,0 +1,581 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+
+class Users extends Frontend_Controller
+{
+	// setting upload path global
+	var $upload_path = './assets/img/user/';
+	
+	function index()
+	{
+		show_404();	
+	}
+	
+	// Open the default administrator CMS login form
+	public function administration()
+	{
+		/*
+		$data['site_title'] = $this->mdl_options->get_options('site_title');
+		$data['logo_form_admin'] = $this->mdl_options->get_options('logo_form_admin');
+		*/
+		
+		$this->template
+			->view('login_admin', $this->data);
+
+		// exit;
+	}
+	
+	// Open the default CMS login form
+	public function login($url_return_to = '#')
+	{
+		if($this->data['logged_in'])
+			redirect();
+		
+		$this->data['url_return_to'] = $url_return_to;
+		
+		$this->template
+			->view('template-login', $this->data);
+	}
+	
+	// Open the default CMS registration form
+	function register()
+	{	
+		echo 'Register form';
+		exit;
+		$this->template
+			->set_theme('system-default')
+			->view('template-register', $this->data);
+	}
+	
+	// Open the default CMS forgot password form
+	function forgot()
+	{	
+		$this->load->view($this->data['template_name'].'template-forgot-password', $this->data);
+	}
+	
+	// Login action
+	public function do_login($url_return_to = '#')
+	{
+		# decode return to
+		$url_return_to = base64_decode($url_return_to);
+		
+		# get post
+		$data = array(
+			'param1' => $this->input->post('param1'),
+			'param2' => $this->input->post('param2')
+		);
+				
+		# try login to local database
+		$check = $this->nyan_auth->login($data['param1'], $data['param2']);
+			
+		if ($check == true)
+		{
+			# role 1 - 4 to back end
+			$role = $this->session->userdata('role_id');
+		
+			$allowed_role = array(1, 2, 3, 4);
+			if (in_array($role, $allowed_role)) 
+			{
+				redirect('control/index');
+			} 
+			else
+			{
+				redirect($url_return_to);
+			}
+		}
+		else
+		{
+			# check user status
+			$user_status['by_username'] = $this->mdl_user->get_field_value('status', 'username', $data['param1']);
+			$user_status['by_email'] = $this->mdl_user->get_field_value('status', 'email', $data['param1']);
+			
+			if (empty($user_status['by_username'])) 
+			{
+				$user_status['fixed'] = $user_status['by_email'];
+			}
+			else
+			{
+				$user_status['fixed'] = $user_status['by_username'];
+			}
+		
+			$this->session->set_flashdata('param1', $data['param1']);
+				
+			if (!empty($user_status['fixed']) && $user_status['fixed'] == 'inactive')
+			{
+				$this->session->set_flashdata('message', '<div class="alert alert-error">We detect that you are not activate your account, please check you email.</div>');
+			}
+			else
+			{
+				$this->session->set_flashdata('message', '<div class="alert alert-error">Wrong username/email or password.</div>');
+			
+			}
+			
+			redirect($url_return_to);
+		}
+	}
+	
+	// Logout action
+	public function logout()
+	{
+		$this->session->sess_destroy();
+		redirect();
+	}	
+	
+	// General request handle
+	function request($action = null, $request_type = null)
+	{
+		// get post
+		$user_identifier = post_filter($this->input->post('user_identifier'));
+		$user_id = $this->mdl_user->get_user_id($user_identifier, 'username');
+		$mail = null;
+		$response = null;
+		
+		if (empty($user_id))
+		{
+			$user_id = $this->mdl_user->get_user_id($user_identifier, 'email');
+			if (empty($user_id))
+			{
+				if ($request_type == 'ajax')
+				{
+					$response = array(
+						'status' => 'failed',
+						'message' => 'Sorry, we can not identify your username or email'
+					);
+					
+					echo json_encode($response);
+				}
+				else
+				{
+					$this->session->set_flashdata('message', '<div class="alert alert-error">Sorry, we can not identify your username or email</div>');
+					redirect('user/forgot');
+				}
+			}
+			else
+			{
+				$mail = $user_identifier;
+			}
+		}
+		else
+		{
+			$mail = $this->mdl_user->get_user_mail($user_identifier, 'username');
+		}
+		
+		// this action is only for active user
+		$user_status = $this->mdl_user->get_field_value('status', 'email', $mail);
+		
+		if ($user_status == 'inactive')
+		{
+			if ($request_type == 'ajax')
+			{
+				$response = array(
+					'status' => 'failed',
+					'message' => '<div class="alert alert-error">Your account is blocked/inactive now.</div>'
+				);
+					
+				echo json_encode($response);
+				exit;
+			}
+			else
+			{
+				$this->session->set_flashdata('message', '<div class="alert alert-error">Your account is blocked/inactive now.</div>');
+				redirect('user/forgot');
+			}
+		}
+		
+		// start request logic
+		if ($action == 'forgot')
+		{
+			$cr_limit = $this->session->userdata('request_confirmation_limit');
+			if ($cr_limit < 5)
+			{
+				$this->nyan_auth->reset_password_confirmation($user_id, $mail);
+				$cr_limit = $cr_limit + 1;
+				$this->session->set_userdata('request_confirmation_limit', $cr_limit);
+				
+				if ($request_type == 'ajax')
+				{
+					$response = array(
+						'status' => 'success',
+						'message' => '<div class="alert alert-success">Please check your email. We have sent reset password access.</div>'
+					);
+					
+					echo json_encode($response);
+				}
+				else
+				{
+					$this->session->set_flashdata('message', '<div class="alert alert-success">Please check your email. We have sent reset password access.</div>');
+					redirect('user/forgot');
+				}
+			}
+			else
+			{
+				if ($request_type == 'ajax')
+				{
+					$response = array(
+						'status' => 'failed',
+						'message' => '<div class="alert alert-error">Exceed limitation request.</div>'
+					);
+					
+					echo json_encode($response);
+				}
+				else
+				{
+					$this->session->set_flashdata('message', '<div class="alert alert-error">Exceed limitation request.</div>');
+					redirect('user/forgot');
+				}
+			}
+		}
+		else
+		{
+			echo 'undefined action request.';
+		}
+	}
+	
+	// Confirmation link request check
+	function confirmation($param_one, $param_two = 'user_activation')
+	{	
+		// param control
+		if ($param_two == null)
+		{
+			$token = $param_one;
+		}
+		else
+		{
+			$token = $param_one;
+			$request = $param_two;
+		}
+		
+		if ($request == 'user_activation')
+		{
+			// check token validation
+			$user_id = $this->mdl_user->get_user_id_by_meta('token', $token);
+			
+			if (empty($user_id))
+			{
+				echo $this->error_handler->show(null, 'Token is not valid');
+			}
+			else
+			{
+				// activate the user
+				$this->mdl_user->activate_user($user_id);
+			
+				// reset user token
+				$this->mdl_user->update_user_token($user_id);
+			
+				// force login
+				$op = $this->nyan_auth->force_login($user_id);
+			
+				if ($op == true)
+				{
+					redirect();
+				}
+				else
+				{
+					echo $this->error_handler->show(null, 'Undefined error');
+				}
+			}
+		}
+		else if ($request == 'reset-password')
+		{
+			// check token validation
+			$user_id = $this->mdl_user->get_user_id_by_meta('token', $token);
+			
+			if (empty($user_id))
+			{
+				echo $this->error_handler->show(null, 'Token is not valid');
+			}
+			else
+			{
+				$result = $this->nyan_auth->reset_password($user_id);
+				
+				if ($result['message'] == 'done')
+				{
+					$mail = $this->mdl_user->get_user_mail($user_id, 'id');
+					$this->nyan_auth->reset_password_confirmation($user_id, $mail, 'success-reset-password', $result['password']);
+					echo 'We have sent your new password. Please check your email.';
+				}
+			}
+		}
+		else
+		{
+			echo $this->error_handler->show(null, 'Undefined request');
+		}
+	}
+	
+	// Register action
+	function do_register_ajax()
+	{	
+		if (!empty($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest') 
+		{
+			$data['username'] = $this->input->post('username');
+			$data['email'] = $this->input->post('email');
+			$data['password'] = $this->input->post('password');
+			$data['verification'] = $this->input->post('verification');
+		
+			// username check
+			$check = $this->mdl_user->is_exist_username($data['username']);
+			if ($check > 0)
+			{
+				echo json_encode(array('status'=> 'error', 'message' => '<div class="alert alert-error">Username is already exist.</div>'));
+				exit;
+			} 
+			
+			//  email check
+			$check = $this->mdl_user->is_exist_email($data['email']);
+			if ($check > 0)
+			{
+				echo json_encode(array('status' => "error", 'message' => '<div class="alert alert-error">Email is already exist.</div>'));
+				exit;
+			} 
+			
+			// verification check
+			if ($this->session->userdata('verification') != $data['verification'])
+			{
+				echo json_encode(array('status' => "error", 'message' => '<div class="alert alert-error">Verification is wrong.</div>'));
+				exit;
+			}
+			
+			// do register
+			$op = $this->mdl_user->new_user($data, true, 5, 'inactive', true, false);
+			if ($op == true)
+			{	
+				echo json_encode(array('status' => "success", 'message' => '<div class="alert alert-success">Thank you for register. One step again, please check your email</div>'));
+			}	
+		}
+		else
+		{
+			echo $this->error_handler->show(null, 'Disallowed method');
+		}
+	}
+
+	// Update the user data
+	function do_update()
+	{
+		$data = array (
+					'id_user' => $this->input->post('id_user'),
+					'f_name' => $this->input->post('f_name'),
+					'l_name' =>$this->input->post('l_name'),
+					'address' => $this->input->post('address'),
+					'role' => $this->input->post('role'),
+					'new_pass' => $this->input->post('new_pass'),
+					'phone' => $this->input->post('phone')
+		        );
+				
+		// role update		
+		if (!empty($data['role']))
+		{
+			$this->mdl_role->update_user_role($data['id_user'], $data['role']);
+		}
+	
+		// meta update
+		$this->mdl_user->update_user_meta('first_name', 'First Name', $data['f_name'], $data['id_user']);
+		$this->mdl_user->update_user_meta('last_name', 'Last Name', $data['l_name'], $data['id_user']);
+		$this->mdl_user->update_user_meta('address', 'Address', $data['address'], $data['id_user']);
+		$this->mdl_user->update_user_meta('phone', 'Phone', $data['phone'], $data['id_user']);
+				
+		$this->session->set_flashdata('message', '<div class="alert alert-success">Data has been updated!</div>');
+		redirect('control/user_edit/'.$data['id_user']);	
+	}
+	
+	// Update just password.
+	function do_update_password()
+	{
+		$user_id = $this->session->userdata('id');
+		
+		$param['nyankod_old_pass'] = $this->nyan_auth->hash_password($this->input->post('nyankod_current_password'));
+		$param['nyankod_new_pass'] = $this->nyan_auth->hash_password($this->input->post('nyankod_new_password'));
+		$param['nyankod_conf_pass'] = $this->nyan_auth->hash_password($this->input->post('nyankod_confirmation_password'));
+		
+		$this->form_validation->set_rules('nyankod_current_password', 'Current Password', 'required');
+		$this->form_validation->set_rules('nyankod_new_password', 'New Password', 'required');
+		$this->form_validation->set_rules('nyankod_confirmation_password', 'Confirmation Password', 'required');
+		
+		// check input form
+		if ($this->form_validation->run() == FALSE) 
+		{
+			$this->session->set_flashdata('message', '<div class="alert alert-error">Sorry, your data is not complete..</div>');
+			redirect('setting/security');
+		}
+		else
+		{
+			// check password
+			$check_pass = $this->mdl_user->is_exist_password($user_id, $param['nyankod_old_pass']);
+			
+			if($check_pass < 1)
+			{
+				// current password is wrong
+				$this->session->set_flashdata('message', '<div class="alert alert-error">Your current password is incorrect!</div>');
+				redirect('setting/security');
+			}
+			else 
+			{
+				// check new password and confirmation password
+				if($param['nyankod_new_pass'] != $param['nyankod_conf_pass'])
+				{
+					// confirmation password is not match
+					$this->session->set_flashdata('message', '<div class="alert alert-error">Confirmation password is not match..</div>');
+					redirect('setting/security');
+				}
+				else
+				{
+					$op = $this->mdl_user->update_user_password($param['nyankod_new_pass'], $user_id);
+					if($op == true)
+					{
+						$this->session->set_flashdata('message', '<div class="alert alert-success">Your password has been changed..</div>');
+						redirect('setting/security');
+					}
+					else
+					{
+						$this->session->set_flashdata('message', '<div class="alert alert-error">Something wrong..</div>');
+						redirect('setting/security');
+					}
+				}
+			}
+		}
+	}
+	
+	/*
+	This is can be used for update user avatar
+	*/
+	function do_update_avatar()
+	{
+		if (isset($_POST) && $_SERVER['REQUEST_METHOD'] == 'POST')
+		{
+			// set id
+			$user_id = $this->session->userdata('id');
+			
+			// get old avatar
+			$photo['avatar_old'] = $this->mdl_user->get_user_meta($user_id, 'avatar');	
+			
+			
+			$new_file_name =  random_string('alnum', 25);
+			$config['file_name'] = $new_file_name;
+			$config['upload_path'] = $this->upload_path;
+			$config['allowed_types'] = 'gif|jpg|png';
+			$config['max_width']  = '2048';
+			$config['max_height']  = '2048';
+			$config['max_size'] = 0;
+
+			$this->load->library('upload', $config);
+
+			if ( ! $this->upload->do_upload())
+			{
+				$error = array('error' => $this->upload->display_errors());
+
+				echo 'failed';
+			}
+			else
+			{
+				$data = array('upload_data' => $this->upload->data());
+				
+				$this->crop_avt($data['upload_data']['file_name']);
+				$this->create_thumb_avatar('nyan_'.$data['upload_data']['file_name']);
+				$this->resize_avatar($data['upload_data']['file_name']);
+				
+				// set the new profile picture
+				$op = $this->mdl_user->update_user_meta('avatar', 'Avatar', $data['upload_data']['file_name'], $user_id);
+				if ($op == true)
+				{
+					echo $data['upload_data']['file_name'];
+					
+					// bantai file asli dan crop
+					$this->del_exist($this->upload_path.$data['upload_data']['file_name']);
+					$this->del_exist($this->upload_path.'nyan_'.$data['upload_data']['file_name']);
+			
+					// bantai gambar lama
+					$this->del_exist($this->upload_path.'xs_nyan_'.$photo['avatar_old']);
+					$this->del_exist($this->upload_path.'sm_nyan_'.$photo['avatar_old']);
+					$this->del_exist($this->upload_path.'md_nyan_'.$photo['avatar_old']);
+					$this->del_exist($this->upload_path.'lg_nyan_'.$photo['avatar_old']);
+					
+				}
+				
+			}
+		}
+	
+	}
+	
+	/*
+	Private function
+	*/
+	
+	private function del_exist($image_file)
+	{
+		/*
+		Delete the image
+		*/
+		$exists = file_exists($image_file);
+		if($exists) {
+			unlink($image_file); 
+		}
+	}
+	
+	private function crop_avt($image_name)
+	{
+		//  set url gambar
+		$imgurl = './'.$this->upload_path. $image_name;
+		
+		//  dapatkan informasi gambar
+  		$size = GetImageSize($imgurl,$info);
+  		$img_x = $size[0]; 
+  		$img_y = $size[1]; 
+		
+		//  dapatkan informasi titik tengah gambar
+		$tengah_width = $img_x / 2;
+		$tengah_height = $img_y /2;
+		
+		//  jika width gambar lebih kecil dari height gambar
+		if ($img_x < $img_y)
+		{
+			//  jika ya, maka atur konfigurasi gambar dengan 
+			//  ukuran berpatok pada width gambar
+			$x1 = 0;
+			$x2 = $img_x;
+			$y1 = $tengah_height - $tengah_width;
+			$y2 = $tengah_height + $tengah_width;
+		}
+		else
+		{
+			//  jika tidak (lebih besar width)
+			//  set ukuran dengan patokan height
+			$y1 = 0;
+			$y2 = $img_y;
+			$x1 = $tengah_width - $tengah_height;
+			$x2 = $tengah_width + $tengah_height;
+		}
+	
+		//  load library image_moo yang ada di direktori aplication/libraries
+		$this->load->library('image_moo') ;
+		if ($image_name) 
+		{
+			//  proses croping gambar
+        	$this->image_moo
+				->load($imgurl)
+				->crop($x1,$y1,$x2,$y2)
+				->save('./'.$this->upload_path. 'nyan_'.$image_name) ;
+		}
+	}
+	
+	private function create_thumb_avatar($image_name)
+	{
+		$this->load->library('image_moo');
+		
+		$this->image_moo
+		->load('./'.$this->upload_path. $image_name)
+		->resize(50,50)
+		->save('./'.$this->upload_path. 'xs_'.$image_name)
+		->resize(128,128)
+		->save('./'.$this->upload_path. 'sm_'.$image_name)
+		->resize(300,300)
+		->save('./'.$this->upload_path. 'md_'.$image_name);			
+	}
+	
+	private function resize_avatar($image_name)
+	{
+		$this->load->library('image_moo');
+		
+		$this->image_moo
+		->load('./'.$this->upload_path. $image_name)
+		->resize(800,800)
+		->save('./'.$this->upload_path. 'lg_nyan_'.$image_name);
+	}	
+}

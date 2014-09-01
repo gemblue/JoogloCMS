@@ -1,0 +1,6 @@
+{
+	"module_name": "Users",
+	"version": "001",
+	"info": "Lorem ipsum dolor sit amet, consectetur adipisicing elit. Fugiat, molestias, nesciunt aperiam aliquam voluptatem optio facere fugit laudantium eius possimus minus eaque atque quidem officiis ipsam iure dolor beatae ut.",
+	"permissions": ["create_user","activate_user"]
+}
