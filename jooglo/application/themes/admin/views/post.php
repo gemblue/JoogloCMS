@@ -80,7 +80,7 @@
 							<td><input id="checkbox_<?php echo $i;?>" name="record[]" class="record" type="checkbox"  value="<?php echo $row->ID?>" /></td>
 							<td>
 								<div><?php echo $row->post_title; ?></div>
-								<?php if($status == 'trash'): ?>
+								<?php if($row->post_status == 'trash'): ?>
 									<div class="t6"><a href="<?php echo $link_restore; ?>">Restore</a> | <a href="<?php echo $link_delete; ?>">Delete</a></div>
 								<?php else: ?>
 									<div class="t6"><a href="<?php echo $link_edit; ?>">Edit</a> | <a href="<?php echo $link_trash; ?>">Trash</a> | <a href="<?php echo base_url($row->post_slug); ?>" target="_blank">View</a></div>		

@@ -9,7 +9,7 @@
 	
 				<div class="row-fluid">
 					<div class="span7">
-						<div class="bottom-space3"><a class="btn btn-la" href="<?php echo site_url('control/new_entry/'.$entry_type); ?>">New <?php echo str_replace('_',' ',ucfirst($entry_type));?></a></div>
+						<div class="bottom-space3"><a class="btn btn-la" href="<?php echo site_url('cms/admin/new_entry/'.$entry_type); ?>">New <?php echo str_replace('_',' ',ucfirst($entry_type));?></a></div>
 					</div>
 					<div class="span5">
 						<!--
@@ -31,7 +31,6 @@
 					<thead>
 						<tr>
 							<th>Title</th>
-							<th>Slug</th>
 							<th>Action</th>
 						</tr>
 					</thead>
@@ -40,13 +39,12 @@
 					<?php
 					foreach ($pg_query as $row)
 					{
-						$link_edit = site_url('control/edit_entry/'.$entry_type.'/'.$row->id);
-						$link_delete =  site_url('control/delete_entry/'.$entry_type.'/'.$row->id);
+						$link_edit = site_url('cms/admin/edit_entry/'.$entry_type.'/'.$row->id);
+						$link_delete =  site_url('cms/admin/delete_entry/'.$entry_type.'/'.$row->id);
 						
 						echo '<tr>';
 						echo '<td>'.$row->title.'</td>';
-						echo '<td>'.$row->slug.'</td>';
-						echo '<td><a href="'.$link_edit.'">Edit</a> | <a href="'.$link_delete.'">Delete</a></td>';
+						echo '<td><a href="'.$link_edit.'">Detail</a> | <a href="'.$link_delete.'">Delete</a></td>';
 						echo '</tr>';
 					}
 					?>

@@ -29,7 +29,7 @@ class Admin extends Backend_Controller {
 	/*
 	|
 	| ---------------------------------------------------------------
-	| MANAGEMENT CUSTOM POSTING
+	| MANAGEMENT ENTRIES
 	| ---------------------------------------------------------------
 	|
 	| Custom posting master data free crud
@@ -95,7 +95,7 @@ class Admin extends Backend_Controller {
 	{
 		if (empty($entry_type) || empty($id))
 		{
-			echo 'undefined custom post or undefined id';
+			echo 'undefined entries or undefined id';
 		}
 		else
 		{	
@@ -105,7 +105,7 @@ class Admin extends Backend_Controller {
 			
 			// Breadcrumb
 			$this->data['breadcrumb'] = array(
-				ucfirst($entry_type) => 'control/custom/'.$entry_type,
+				ucfirst($entry_type) => 'cms/admin/entry/'.$entry_type,
 				'Edit '.ucfirst($entry_type) => false
 			);
 			
@@ -130,7 +130,7 @@ class Admin extends Backend_Controller {
 			
 			// Breadcrumb
 			$this->data['breadcrumb'] = array(
-				ucfirst($entry_type) => 'control/custom/'.$entry_type,
+				ucfirst($entry_type) => 'cms/admin/entry/'.$entry_type,
 				'New '.ucfirst($entry_type) => false
 			);
 			
@@ -160,7 +160,7 @@ class Admin extends Backend_Controller {
 		if ($this->form_validation->run() == false)
 		{
 			$this->session->set_flashdata('message', $this->lang->line('jooglo_error_must_fill_global'));
-			redirect('control/edit_custom/'.$this->data['entry_type'].'/'.$this->data['entry_id']);
+			redirect('cms/admin/edit_entry/'.$this->data['entry_type'].'/'.$this->data['entry_id']);
 		}
 		else
 		{
@@ -174,7 +174,7 @@ class Admin extends Backend_Controller {
 						// Get post loop
 						$meta_value_post =  $this->input->post($value['meta_key']);
 							
-						// Update meta param(meta_key, meta_name, new_value, id_custom_post)
+						// Update meta param(meta_key, meta_name, new_value, entry_id)
 						$this->mdl_entries->update_entry_meta($value['meta_key'], make_lable($value['meta_key']), $meta_value_post, $this->data['entry_id']);
 					}
 				}
@@ -182,7 +182,7 @@ class Admin extends Backend_Controller {
 				// Update post master
 				$this->mdl_entries->update_entry_master('title', $this->data['title'], $this->data['entry_id']);
 					
-				// Slug checker, every custom post must have unique slug
+				// Slug checker, every entry must have unique slug
 				$check = $this->mdl_entries->is_exist_slug($this->data['slug']);
 				if ($check == true)
 				{
@@ -203,22 +203,22 @@ class Admin extends Backend_Controller {
 				{
 					$this->mdl_entries->update_entry_master('slug', $this->data['slug'], $this->data['entry_id']);
 					$this->session->set_flashdata('message', $this->lang->line('jooglo_success_update'));
-					redirect('control/edit_entry/'.$this->data['entry_type'].'/'.$this->data['entry_id']);
+					redirect('cms/admin/edit_entry/'.$this->data['entry_type'].'/'.$this->data['entry_id']);
 				} 
 				else 
 				{
 					$this->session->set_flashdata('message', $this->lang->line('jooglo_error_slug'));
-					redirect('control/edit_entry/'.$this->data['entry_type'].'/'.$this->data['entry_id']);
+					redirect('cms/admin/edit_entry/'.$this->data['entry_type'].'/'.$this->data['entry_id']);
 				}
 			}
 			else
 			{
-				// Slug checker, every custom post must have unique slug
+				// Slug checker, every entry must have unique slug
 				$check = $this->mdl_entries->is_exist_slug($this->data['slug']);
 				if ($check == true)
 				{
 					$this->session->set_flashdata('message', $this->lang->line('jooglo_error_slug'));
-					redirect('control/new_entry/'.$this->data['entry_type']);
+					redirect('cms/admin/new_entry/'.$this->data['entry_type']);
 				}
 				else
 				{
@@ -243,7 +243,7 @@ class Admin extends Backend_Controller {
 								// Get post loop
 								$meta_value_post =  $this->input->post($value['meta_key']);
 								
-								// Update meta param(meta_key, meta_name, new_value, id_custom_post)
+								// Update meta param(meta_key, meta_name, new_value, entry id)
 								$this->mdl_entries->update_entry_meta($value['meta_key'], make_lable($value['meta_key']), $meta_value_post, $entry_id);
 							}
 						}
@@ -260,20 +260,20 @@ class Admin extends Backend_Controller {
 							}
 							else
 							{
-								// Update meta param(meta_key, meta_name, new_value, id_custom_post)
+								// Update meta param(meta_key, meta_name, new_value, entry id)
 								$this->mdl_entries->update_entry_meta($name, make_lable($name), $val, $entry_id);
 							}
 						}
 							
 						$this->session->set_flashdata('message', $this->lang->line('jooglo_success_add'));
-						redirect('control/entry/'.$this->data['entry_type']);
+						redirect('cms/admin/entry/'.$this->data['entry_type']);
 					}
 				}		
 			}
 		}	 
 	}
 	
-	public function add_field_custom()
+	public function add_field_entry()
 	{
 		$input = $this->input->post('data_post');
 		$input = explode('|', $input);
@@ -283,7 +283,7 @@ class Admin extends Backend_Controller {
 		echo 'success';
 	}
 	
-	public function delete_field_custom($meta_key, $entry_id, $url_callback)
+	public function delete_field_entry($meta_key, $entry_id, $url_callback)
 	{
 		$this->mdl_entries->delete_meta($meta_key, $entry_id);
 		

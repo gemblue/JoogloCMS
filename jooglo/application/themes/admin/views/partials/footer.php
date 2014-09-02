@@ -209,7 +209,7 @@
 				});         
 			}
 		});
-  	
+		
 		// Menu Js
 		var heightLeft = $(".menu-left").height();
 		var heightRight = $(".content-area").height();
@@ -245,9 +245,7 @@
 				$(this).find(".menu-caret").html('<i class="icon-minus"></i>');
 			}
 		});
-		/* ------ ACCORDION END ------ */
 		
-		/* ------ BOX AREA ------ */
 		$(".link-chevron").click(function(){
 			$(this).parents(".content-admin").find(".body-area").toggle();
 			
@@ -261,7 +259,38 @@
 			return false;
 	
 		});
-		/* ------ BOX AREA END ------ */
+		
+		// Entry form Js
+		$('#form_new_field').hide();
+		
+		$('#btn_opn_new_field').click(function(){
+			$('#form_new_field').show();
+		});
+	
+		$('#btn_new_field').click(function(){
+			var field_name = $('#field_name').val();
+			var field_name_key = field_name.replace(' ','_');
+			var field_name_key_lower = field_name_key.toLowerCase();
+	
+			$('#extra_field_dynamic').append('<div class=label-input>' + field_name +' </div><div class=bottom-space4><input type=text name=' + field_name_key_lower + ' class=span6 /></div>')
+			$('#form_new_field').hide();
+		});
+	
+		$('#btn-add-field').click(function(){
+	
+			var field_name = $('#field_name').val(); 
+			var field_content = $('#field_content').val(); 
+			var entries_id = $('#entry_id').val();
+		
+			goLoading();
+		
+			$.post( base_url + 'cms/admin/add_field_entry', { data_post: entries_id + '|' + field_name + '|' + field_content })
+			.done(function( data ) {
+				window.location.reload(false);
+			});
+		
+			return false;
+		});
 		
 		// Function
 		function convertToSlug(Text)

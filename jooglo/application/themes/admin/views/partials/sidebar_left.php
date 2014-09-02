@@ -96,7 +96,7 @@
 		<a href="<?php echo site_url('cms/admin/media'); ?>" class="main_menu"><span class="menu-icon t5"><i class="icon-picture"></i></span> <span class="menu-text"><?php echo ($this->uri->segment(3) == 'media' ? '<b>Media</b>' : 'Media'); ?></span></a>
 	</div>
 
-	<div class="accordion-group <?php echo ($this->uri->segment(3) == 'custom' ? 'active' : '');  ?>">
+	<div class="accordion-group <?php echo ($this->uri->segment(3) == 'entry' ? 'active' : '');  ?>">
 		<div class="accordion-heading">
 			<a class="accordion-toggle" data-toggle="collapse" data-parent="#main_menu" href="#menu_multi">
 				<span class="menu-icon"><i class="icon-pencil t5"></i></span> <span class="menu-text">Entries<span class="pull-right menu-caret t6"><i class="icon-plus"></i></span></span>
