@@ -96,34 +96,12 @@ class Mdl_taxonomy extends CI_Model
 		/*
 		model to get the post tags from the taxonomy by id post
 		*/
-		$sql = "SELECT d.name FROM $this->posts AS a LEFT JOIN ($this->term_relationships AS b, $this->term_taxonomy AS c, $this->terms AS d) ON (a.id = b.object_id AND b.term_taxonomy_id = c.term_taxonomy_id AND c.term_id = d.term_id) WHERE a.id = '$id_post' AND c.taxonomy = 'post_tag'";
+		$sql = "SELECT d.name, d.slug FROM $this->posts AS a LEFT JOIN ($this->term_relationships AS b, $this->term_taxonomy AS c, $this->terms AS d) ON (a.id = b.object_id AND b.term_taxonomy_id = c.term_taxonomy_id AND c.term_id = d.term_id) WHERE a.id = '$id_post' AND c.taxonomy = 'post_tag'";
 
 		$query = $this->db->query($sql);
 		return $query->result();
 	}
 	
-	function get_all_terms($type)
-	{
-		/*
-		model to get all the terms from the taxonomy
-		*/
-		$sql = "SELECT b.slug,b.term_id,b.name FROM $this->term_taxonomy AS a INNER JOIN $this->terms AS b ON a.term_id = b.term_id WHERE a.taxonomy = '$type' AND a.parent = '0'";
-
-		$query = $this->db->query($sql);
-		return $query->result();
-	}
-	
-	function get_tot_terms($type)
-	{
-		/*
-		model to get total all the post category from the taxonomy
-		*/
-		$sql = "SELECT b.term_id FROM $this->term_taxonomy AS a INNER JOIN $this->terms AS b ON a.term_id = b.term_id WHERE a.taxonomy = '$type' AND a.parent = '0'";
-
-		$query = $this->db->query($sql);
-		return $query->num_rows();
-	}
-
 	function get_term_by_id($id)
 	{
 		/*
@@ -196,19 +174,48 @@ class Mdl_taxonomy extends CI_Model
 		return $this->db->get()->result();
 	}
 	
-	function get_list_terms($num, $pg, $type)
+	function get_total_terms($type)
 	{
 		/*
-		model to get all terms/category/tags with limit, for paging
+		model to get total all the post category from the taxonomy
 		*/
+		$sql = "SELECT b.term_id FROM $this->term_taxonomy AS a INNER JOIN $this->terms AS b ON a.term_id = b.term_id WHERE a.taxonomy = '$type' AND a.parent = '0'";
+
+		$query = $this->db->query($sql);
+		return $query->num_rows();
+	}
+	
+	function get_terms($type, $limit = null, $limit_order = null)
+	{
+		/*
+		model to get all terms/category/tags, can be filtered by post type.
+		*/
+		
 		$this->db->select($this->terms.'.slug,'.$this->terms.'.term_id,'.$this->terms.'.name');
 		$this->db->from($this->term_taxonomy);
 		$this->db->join($this->terms, $this->terms.'.term_id'.'='.$this->term_taxonomy.'.term_id');
 		$this->db->where('taxonomy', $type);
 		$this->db->where('parent', '0');
-		$this->db->limit($num, $pg);
+		
+		if ($limit != null)
+		{
+			$this->db->limit($limit, $limit_order);
+		}
+		
 		$this->db->order_by('term_id','desc');
 		return $this->db->get()->result();
+	}
+
+	function get_all_terms($type)
+	{
+		/*
+		model to get all the terms from the taxonomy, no filter
+		*/
+		
+		$sql = "SELECT b.slug,b.term_id,b.name FROM $this->term_taxonomy AS a INNER JOIN $this->terms AS b ON a.term_id = b.term_id WHERE a.taxonomy = '$type' AND a.parent = '0'";
+
+		$query = $this->db->query($sql);
+		return $query->result();
 	}
 	
 	/*

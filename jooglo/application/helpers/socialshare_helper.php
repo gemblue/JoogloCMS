@@ -11,8 +11,6 @@ if ( ! function_exists('get_tweets_count'))
 	}
 }
 
-
-
 if ( ! function_exists('get_likes_count'))
 {
 	function get_likes_count($url) {
@@ -23,7 +21,6 @@ if ( ! function_exists('get_likes_count'))
 		return intval( $json[$url]['shares'] );
 	}
 }
-
 
 if ( ! function_exists('get_sharefb_count'))
 {
@@ -42,8 +39,6 @@ if ( ! function_exists('get_sharefb_count'))
 		return $fbcount;
 	}
 }
-
-
 
 if ( ! function_exists('get_plusones_count'))
 {

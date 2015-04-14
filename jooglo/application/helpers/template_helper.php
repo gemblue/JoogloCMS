@@ -19,8 +19,6 @@ if ( ! function_exists('get_theme_js'))
 			return $url;
 		else
 			return '<script src="'.$url.'"></script>';
-
-
 	}
 }
 

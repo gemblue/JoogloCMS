@@ -32,7 +32,7 @@ class Admin extends Backend_Controller {
 	| MANAGEMENT ENTRIES
 	| ---------------------------------------------------------------
 	|
-	| Custom posting master data free crud
+	| Entry master data free crud
 	| Slide, Food, Band, People, Etc
 	| 
 	*/
@@ -40,11 +40,11 @@ class Admin extends Backend_Controller {
 	/*
 	Show new entry form
 	*/
-	public function add_entry()
+	public function add_entry_type()
 	{
 		// Title_page
 		$this->data['title_page'] = 'Add Entry';
-		$this->template->view('add_entry_form', $this->data); 
+		$this->template->view('entry_form_add_type', $this->data); 
 	}
 	
 	/*
@@ -68,7 +68,7 @@ class Admin extends Backend_Controller {
 				make_lable($entry_type) => false
 			);
 		
-			$this->data['pg_query'] = $this->mdl_entries->get_list_entry($entry_type,30);
+			$this->data['pg_query'] = $this->mdl_entries->get_entries($entry_type,30);
 
 			$this->template->view('entry', $this->data);
 		}
@@ -413,17 +413,21 @@ class Admin extends Backend_Controller {
 	public function post_search()
 	{
 		// Get the param
-		$title = $this->input->post('inp_search');
+		$keyword = $this->input->post('inp_search');
 		$status = $this->input->post('status');
 		$post_type = $this->input->post('post_type');
 			
 		// Title_page
 		$this->data['title_page'] = make_lable($post_type);
 		
-		// Post type
+		// Post type and status
 		$this->data['status'] = $status;
 		$this->data['post_type'] = $post_type;
-			
+		
+		// Search mode var
+		$this->data['keyword'] = $keyword;
+		$this->data['search_mode'] = true;
+		
 		// Breadcrumb
 		$this->data['breadcrumb'] = array(
 			make_lable($post_type) => 'control/post/'.$status.'/'.$post_type,
@@ -431,9 +435,9 @@ class Admin extends Backend_Controller {
 			'Search' => false
 		);
 			
-		$this->data['num_rows'] = $this->mdl_post->search_post($title, 'total', $post_type, $status, null, null);
+		$this->data['num_rows'] = $this->mdl_post->search_post($keyword, 'total', $post_type, $status, null, null);
 		$this->data['status'] = $status;
-		$this->data['pg_query'] = $this->mdl_post->search_post($title, 'array', $post_type, $status, null, null);
+		$this->data['pg_query'] = $this->mdl_post->search_post($keyword, 'array', $post_type, $status, null, null);
 		$this->template->view('post', $this->data); 
 	}
 	
@@ -444,7 +448,7 @@ class Admin extends Backend_Controller {
 	{
 		// Title_page
 		$this->data['title_page'] = 'Add Post Type';
-		$this->template->view('add_post_type_form', $this->data); 
+		$this->template->view('post_form_add_type', $this->data); 
 	}
 	
 	/*
@@ -464,12 +468,11 @@ class Admin extends Backend_Controller {
 			
 		// Type form post
 		$this->data['type_form_post'] = 'new';
+		
+		$this->data['post_type'] = $post_type;
 		$this->data['current_post_type'] = $post_type;
-		
-		// Send category post data
+		$this->data['meta_information'] = $this->mdl_post->get_meta_information($post_type);
 		$this->data['cat_query'] = $this->mdl_taxonomy->get_all_terms('category'); 
-		
-		// Send page template options
 		$this->data['custom_page_template'] = $this->custom_page_template->get_custom_page();
 		$this->template->view('post_form', $this->data); 
 	}
@@ -494,7 +497,7 @@ class Admin extends Backend_Controller {
 		// Type form post
 		$this->data['type_form_post'] = 'edit';
 		
-		// Send category post data
+		$this->data['meta_information'] = $this->mdl_post->get_meta_information($post_type);
 		$this->data['cat_query'] = $this->mdl_taxonomy->get_all_terms('category'); 
 		$this->data['pg_query'] = $this->mdl_post->get_single_post(null, 'ID', $post_id);
 		$this->data['custom_page_template'] = $this->custom_page_template->get_custom_page();
@@ -562,21 +565,42 @@ class Admin extends Backend_Controller {
 				'post_content' => $this->input->post('post_content'),
 				'post_author' => $this->data['user_id'],
 				'slug' => $slug,
-				'tags' => $this->input->post('tags'),
-				'metadesc' => $this->input->post('metadesc'),
-				'metakey' => $this->input->post('metakey')
+				'tags' => $this->input->post('tags')
 			);
 				
 			if ($this->mdl_post->update_post($data))
 			{
 				$this->session->set_flashdata('message', $this->lang->line('jooglo_success_update'));
 				$link_to = site_url('cms/admin/post_edit/'.$post_id);
-		
-				// General meta
-				$this->mdl_post->update_meta('meta_description', $data['metadesc'], $post_id);
-				$this->mdl_post->update_meta('meta_keyword', $data['metakey'], $post_id);
-				$this->mdl_post->update_meta('featured_image', $featured_image, $post_id);
+				
+				// Take and update extra post meta
+				$meta_information = $this->mdl_post->get_meta_information($post_type);
+				if (!empty($meta_information))
+				{
+					foreach ($meta_information as $row => $value)
+					{
+						// Get post loop
+						$meta_value_post =  $this->input->post($value['meta_key']);
+							
+						// Update meta / custom field
+						$this->mdl_post->update_meta($value['meta_key'], $meta_value_post, $post_id, 'publish');
+					}
+				}
+				
+				// Take and update new field extra
+				foreach ($_POST as $name => $val)
+				{
+					$name = htmlspecialchars($name);
+					$val = htmlspecialchars($val);
 					
+					$not_allowed_field = array('cat', 'url_source', 'post_id', 'post_content', 'current_cat_id', 'post_status', 'post_type', 'cat_id', 'post_date', 'slug', 'tags', 'post_title' , 'post_author', 'post_date');
+					if (!in_array($name, $not_allowed_field))
+					{
+						// Update meta
+						$this->mdl_post->update_meta($name, $val, $post_id, 'publish');
+					}
+				}
+				
 				// If the post is page. Update template.
 				if ($post_type == 'page')
 				{
@@ -601,6 +625,9 @@ class Admin extends Backend_Controller {
 		$slug = $this->input->post('slug');
 		$post_date = $this->input->post('post_date');
 		$featured_image = $this->input->post('featured_image', true);
+		
+		// Get meta information
+		$meta_information = $this->mdl_post->get_meta_information($post_type);
 		
 		// Cat id control
 		if (empty($cat_id))
@@ -627,21 +654,41 @@ class Admin extends Backend_Controller {
 				'post_content' => $this->input->post('post_content'),
 				'post_author' => $this->data['user_id'],
 				'slug' => $slug,
-				'tags' => $this->input->post('tags'),
-				'metadesc' => $this->input->post('metadesc'),
-				'metakey' => $this->input->post('metakey')
+				'tags' => $this->input->post('tags')
 			);
 					
-			if ($this->mdl_post->new_post($data))
+			if ($this->mdl_post->insert_post($data))
 			{
 				$post_id = $this->mdl_post->get_post_id($slug);
 				$this->session->set_flashdata('message', $this->lang->line('jooglo_success_add'));
 				$link_to = site_url('cms/admin/post_edit/'.$post_id);
+				
+				// Take and update extra post meta that has been exist	
+				if (!empty($meta_information))
+				{
+					foreach ($meta_information as $row => $value)
+					{
+						// Get post loop
+						$meta_value_post =  $this->input->post($value['meta_key']);
+							
+						// Update meta / custom field
+						$this->mdl_post->update_meta($value['meta_key'], $meta_value_post, $post_id, 'publish');
+					}
+				}
+				
+				// Take and update new field extra
+				foreach ($_POST as $name => $val)
+				{
+					$name = htmlspecialchars($name);
+					$val = htmlspecialchars($val);
 					
-				// General meta
-				$this->mdl_post->update_meta('meta_description', $data['metadesc'], $post_id );
-				$this->mdl_post->update_meta('meta_keyword', $data['metakey'], $post_id );
-				$this->mdl_post->update_meta('featured_image', $featured_image, $post_id );
+					$not_allowed_field = array('cat', 'url_source', 'post_id', 'post_content', 'current_cat_id', 'post_status', 'post_type', 'cat_id', 'post_date', 'slug', 'tags', 'post_title' , 'post_author', 'post_date');
+					if (!in_array($name, $not_allowed_field))
+					{
+						// Update meta
+						$this->mdl_post->update_meta($name, $val, $post_id, 'publish');
+					}
+				}
 				
 				// Page meta
 				if ($post_type == 'page')
@@ -698,7 +745,7 @@ class Admin extends Backend_Controller {
 				'metakey' => $this->input->post('metakey')
 			);
 			
-			if ($this->mdl_post->new_post($data))
+			if ($this->mdl_post->insert_post($data))
 			{
 				$post_id = $this->mdl_post->get_post_id($slug);
 				$this->session->set_flashdata('message', $this->lang->line('jooglo_success_add'));
@@ -850,7 +897,7 @@ class Admin extends Backend_Controller {
 		$this->pagination->initialize($config); 
 		$this->data['pagination'] = $this->pagination->create_links();
 		$this->data['pg_query'] = $this->mdl_user->get_list_user($status, $config['per_page'], $this->uri->segment(5));
-		$this->template->view('user_list', $this->data); 
+		$this->template->view('user', $this->data); 
 	}
 	
 	/*
@@ -1014,7 +1061,7 @@ class Admin extends Backend_Controller {
 			
 	 	$this->data['num_rows'] = $this->mdl_user->search('total', $username);
 		$this->data['pg_query'] = $this->mdl_user->search('array', $username);
-		$this->template->view('user_list', $this->data); 
+		$this->template->view('user', $this->data); 
 	}
 	
 	/*
@@ -1062,6 +1109,9 @@ class Admin extends Backend_Controller {
 		$param['username'] = $this->input->post('username');
 		$param['email'] = $this->input->post('email');
 		$param['role'] = $this->input->post('role');
+		$param['role_id'] = $this->input->post('role');
+		$param['status'] = 'active';
+		$param['role'] = $this->input->post('role');
 		$param['password'] = $this->input->post('password');
 		
 		// Check username
@@ -1096,7 +1146,7 @@ class Admin extends Backend_Controller {
 		} 
 			
 		// Insert new user
-		$user_id = $this->mdl_user->new_user($param, $param['role'], 'active');
+		$user_id = $this->mdl_user->insert_user($param);
 		
 		// Update meta
 		$this->mdl_user->update_user_meta('first_name', 'First Name', $this->input->post('f_name'), $user_id);
@@ -1166,10 +1216,9 @@ class Admin extends Backend_Controller {
 		}
 		
 		// Get total
-		$this->data['num_rows'] = $this->mdl_comment->get_comments('total', $status);
+		$this->data['total'] = $this->mdl_comment->get_comments('total', $status);
 	
-		
-		$config['total_rows'] = $this->data['num_rows']; 
+		$config['total_rows'] = $this->data['total']; 
 		$config['per_page'] = 5; 
 		$config['uri_segment'] = 5; 
 		$config['full_tag_open'] = '<div class="pagination pagination-small pagination-la"><ul>';
@@ -1192,8 +1241,8 @@ class Admin extends Backend_Controller {
 		$config['num_tag_close'] = '</li>';
 
 		$this->pagination->initialize($config); 
-		
 		$this->data['pagination'] = $this->pagination->create_links();
+		
 		$limit_order = $this->uri->segment(5);
 		
 		if (empty($limit_order))
@@ -1201,9 +1250,10 @@ class Admin extends Backend_Controller {
 			$limit_order = 1;
 		}
 		
-		// Control by post
-		$this->data['pg_query'] = $this->mdl_comment->get_comments('array', $status, null, null, null, $config['per_page'], $limit_order);
+		// Query
 		$this->data['status'] = $status;
+		$this->data['pg_query'] = $this->mdl_comment->get_comments('array', $status, null, null, null, $config['per_page'], $limit_order);
+		
 		$this->template->view('comment', $this->data); 
 	}
 	
@@ -1292,17 +1342,54 @@ class Admin extends Backend_Controller {
 		$this->data['nav2'] = 'Category';
 		$this->data['post_type'] = $post_type;
 		
+		// Get total
 		if ($post_type == 'post')
 		{
-			$this->data['total'] = $this->mdl_taxonomy->get_tot_terms('category');
-			$this->data['pg_query'] = $this->mdl_taxonomy->get_all_terms('category');
+			$this->data['total'] = $this->mdl_taxonomy->get_total_terms('category');
 		}
 		else
 		{
-			$this->data['total'] = $this->mdl_taxonomy->get_tot_terms($post_type.'_category');
-			$this->data['pg_query'] = $this->mdl_taxonomy->get_all_terms($post_type.'_category');
+			$this->data['total'] = $this->mdl_taxonomy->get_total_terms($post_type.'_category');
 		}
+		
+		// Paging config
+		$config['base_url'] = site_url('cms/admin/category/'.$post_type);
+		$config['total_rows'] = $this->data['total']; 
+		$config['per_page'] = 10; 
+		$config['uri_segment'] = 5; 
+		$config['full_tag_open'] = '<div class="pagination pagination-small pagination-la"><ul>';
+		$config['full_tag_close'] = '</ul></div>';
+		$config['first_link'] = '<i class="icon-long-arrow-left"></i> First';
+		$config['first_tag_open'] = '<li>';
+		$config['first_tag_close'] = '</li>';
+		$config['last_link'] = 'Last <i class="icon-long-arrow-right"></i>';
+		$config['last_tag_open'] = '<li>';
+		$config['last_tag_close'] = '</li>';
+		$config['next_link'] = 'Next';
+		$config['next_tag_open'] = '<li>';
+		$config['next_tag_close'] = '</li>';
+		$config['prev_link'] = 'Prev';
+		$config['prev_tag_open'] = '<li>';
+		$config['prev_tag_close'] = '</li>';
+		$config['cur_tag_open'] = '<li class="active"><a href="//">';
+		$config['cur_tag_close'] = '</a></li>';
+		$config['num_tag_open'] = '<li>';
+		$config['num_tag_close'] = '</li>';
 
+		$this->pagination->initialize($config); 
+		$this->data['pagination'] = $this->pagination->create_links();
+		
+		// Query
+		if ($post_type == 'post')
+		{
+			$this->data['pg_query'] = $this->mdl_taxonomy->get_terms('category', $config['per_page'], $this->uri->segment(5));
+		}
+		else
+		{
+			$this->data['pg_query'] = $this->mdl_taxonomy->get_terms($post_type.'_category', $config['per_page'], $this->uri->segment(5));
+		}
+		
+		// Show
 		$this->template->view('category_tags', $this->data);
 	}
 	

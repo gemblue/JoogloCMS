@@ -1,0 +1,1 @@
+<?php if (!defined('BASEPATH')) exit('No direct script access allowed');$config['tw_consumer_key'] = 'vfMMAAtSseVcle51X04BbXyWL';$config['tw_consumer_secret'] = 'Q4RTKS78ahqtLcMMSGsV1E8sUkX7kQqnLkGAIleCKudxTpc1ik';$config['fb_app_id'] = '414317858711157';$config['fb_app_secret'] = 'e5f444f095d2f90563e1763062d9d918';

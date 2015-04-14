@@ -23,7 +23,6 @@ class Mdl_post extends CI_Model
 	| ---------------------------------------------------------------
 	|
 	*/
-	
 	function get_random_post($limit)
 	{
 		/*
@@ -78,38 +77,46 @@ class Mdl_post extends CI_Model
 		return $this->db->get()->result();
 	}
 	
-	function get_post_by_term($term_slug, $term_type, $limit = 5, $limit_order = 1, $extra_option = null)
+	function get_post_by_term($term_slug, $result = 'array', $status, $term_type, $limit = null, $limit_order = null)
 	{
-		/*
-		model to get loop post by category or tag
-		category and tag are terms
-		term slug is the unique field that separate one to the other
-		*/
-		
-		$sql = "
-		
-		SELECT $this->posts.id, $this->users.id
-		FROM $this->posts 
-		LEFT JOIN ($this->term_relationships, $this->users, $this->term_taxonomy, $this->terms) 
-		ON ( 
-			 $this->term_relationships.object_id = $this->posts.id 
-			 AND $this->users.id = $this->posts.post_author 
-			 AND $this->term_taxonomy.term_taxonomy_id = $this->term_relationships.term_taxonomy_id
-			 AND $this->terms.term_id = $this->term_taxonomy.term_id
-				  )
+		if ($result == 'total')
+		{
+			$this->db->select($this->posts.'.id as ID');
+		}
+		else
+		{
+			$this->db->select($this->posts.'.id as ID,'.$this->posts.'.post_slug,'.$this->posts.'.post_title,'.$this->users.'.id');
+		}
 
-		WHERE $this->terms.slug = '$term_slug'
-			  AND $this->term_taxonomy.taxonomy = '$term_type'
-			  
-		ORDER BY $this->posts.id 
-		LIMIT $limit_order, $limit
-		";
+		$this->db->from($this->posts);
 		
-		$query = $this->db->query($sql);
-		return $query->result();
+		$this->db->join($this->term_relationships, $this->term_relationships.'.object_id'.'='.$this->posts.'.id');
+		$this->db->join($this->users, $this->users.'.id'.'='.$this->posts.'.post_author');
+		$this->db->join($this->term_taxonomy, $this->term_taxonomy.'.term_taxonomy_id'.'='.$this->term_relationships.'.term_taxonomy_id');
+		$this->db->join($this->terms, $this->terms.'.term_id'.'='.$this->term_taxonomy.'.term_id');
+		
+		$this->db->where($this->terms.'.slug', $term_slug);
+		$this->db->where($this->posts.'.post_status', $status);
+		$this->db->where($this->term_taxonomy.'.taxonomy', $term_type);
+		
+		$this->db->order_by($this->posts.'.id', 'desc');
+		
+		if ($limit != null)
+		{
+			$this->db->limit($limit, $limit_order);
+		}
+		
+		if ($result == 'total')
+		{
+			return $this->db->get()->num_rows();
+		}
+		else
+		{
+			return $this->db->get()->result();
+		}
 	}
 	
-	function get_post($post_type, $result, $post_status, $limit = 10, $limit_order = 0, $by = null, $post_parent = null)
+	function get_post($post_type, $result, $post_status, $limit = 10, $limit_order = 0, $by = null, $post_parent = null, $jooglo_paging = null)
 	{
 		/*
 		model to get page/post draft/publish/trash loop!
@@ -175,7 +182,25 @@ class Mdl_post extends CI_Model
 		} 
 		else 
 		{
-			$this->db->limit($limit, $limit_order);
+			# override when jooglo paging on. 
+			if ($jooglo_paging == 'jooglo_paging_on')
+			{
+				if($limit_order == 0 || $limit_order == 1)
+				{
+					$page_post = 0;
+				} 
+				else 
+				{
+					$page_post = ($limit_order - 1) * $limit;
+				}
+				
+				$this->db->limit($limit, $page_post);
+			}
+			else
+			{
+				$this->db->limit($limit, $limit_order);
+			}
+			
 			$this->db->order_by('post_date','desc');
 			return $this->db->get()->result();
 		}
@@ -368,6 +393,27 @@ class Mdl_post extends CI_Model
 		return $post_status;
 	}
 	
+	function get_field_value($field, $by_field, $by_field_value)
+	{
+		/*
+		model to get field value by any field
+		*/
+		
+		$this->db->select($this->posts.'.'.$field.' AS result');
+		$this->db->from($this->posts);
+		$this->db->where($this->posts.'.'.$by_field, $by_field_value);
+		$data = $this->db->get()->result();
+		
+		$result = null;
+		
+		foreach ($data as $row)
+		{
+			$result = $row->result;
+		}
+		
+		return $result;
+	}
+	
 	/*
 	|
 	| ---------------------------------------------------------------
@@ -375,7 +421,7 @@ class Mdl_post extends CI_Model
 	| ---------------------------------------------------------------
 	|
 	*/
-	function new_post($param)
+	function insert_post($param)
 	{
 		/*
 		model to post new 
@@ -480,7 +526,7 @@ class Mdl_post extends CI_Model
 	| ---------------------------------------------------------------
 	|
 	*/
-	function search_post($title, $result, $post_type, $status, $limit, $limit_order = 0)
+	function search_post($title, $result, $post_type, $status, $limit = null, $limit_order = null)
 	{
 		/*
 		model to search the post by filter
@@ -511,25 +557,18 @@ class Mdl_post extends CI_Model
 		
 		$this->db->like($this->posts.'.post_title', $title);
 	
-		if (isset($limit) && !empty($limit))
+		if ($limit != null)
 		{
-			if($limit_order == 0 || $limit_order == 1){
-				$page_post = 0;
-			} else {
-				$page_post = ($limit_order - 1) * $limit;
-			}
-			
-			$this->db->limit($limit, $page_post);
+			$this->db->limit($limit, $limit_order);
 		}
 		
-		$this->db->order_by('post_date_gmt','desc');
+		$this->db->order_by('post_date', 'desc');
 		
 		if ($result == 'total') {
 			return $this->db->get()->num_rows();
 		} else {
 			return $this->db->get()->result();
 		}
-		
 	}
 	
 	/*
@@ -607,6 +646,18 @@ class Mdl_post extends CI_Model
 	| ---------------------------------------------------------------
 	|
 	*/
+	
+	function update_view($post_id)
+	{
+		/*
+		model to update page views
+		*/
+		
+		$sql = "UPDATE $this->posts SET view = view + 1 WHERE ID = '$post_id'";
+		$query = $this->db->query($sql);
+		return true;
+	}
+		
 	function update_post($param)
 	{
 		/*
@@ -812,6 +863,37 @@ class Mdl_post extends CI_Model
 	| ---------------------------------------------------------------
 	|
 	*/
+	function get_meta_information($post_type)
+	{
+		/*
+		model to get meta information by the post type
+		this function returns array meta information that used by the post type
+		*/
+		$sql = "SELECT ID FROM $this->posts WHERE post_type = '$post_type' ORDER BY ID DESC LIMIT 1";
+		$query = $this->db->query($sql);
+		$data = $query->result();
+		
+		if (empty($data))
+		{
+			return null;
+		}
+		else
+		{
+			$id = null;
+			
+			foreach ($data as $row)
+			{
+				$id = $row->ID;
+			}
+			
+			# if we have got id that related to the post type, now get the all meta key information
+			$sql = "SELECT meta_key FROM $this->post_meta WHERE post_id = '$id' GROUP BY meta_key";
+			$query = $this->db->query($sql);
+			$data = $query->result_array();
+			
+			return $data;
+		}
+	}
 	
 	function get_post_thumbnail($post_id, $size = 'md')
 	{
@@ -826,22 +908,22 @@ class Mdl_post extends CI_Model
 			$result = base_url().$row->meta_value;
 		}	
 		
-		if (empty($result))
+		if (empty($result) || $result == site_url())
 		{
 			// Return default
-			$result = base_url().'jooglo/assets/img/post_images/default/'.$size.'_default.jpg';
+			$result = base_url().'jooglo/uploads/images/default/'.$size.'_default.png';
 		}
-			
+		
 		return $result;
 	}
 	
-	function get_post_meta($post_id, $field_value, $size = 'md')
+	function get_post_meta($post_id, $meta_key)
 	{
 		/*
 		model to get post meta
 		*/
 	
-		$sql = "SELECT meta_value FROM $this->post_meta WHERE meta_key = '$field_value' AND post_id = '$post_id'";
+		$sql = "SELECT meta_value FROM $this->post_meta WHERE meta_key = '$meta_key' AND post_id = '$post_id'";
 		$query = $this->db->query($sql);
 		$data = $query->result();
 			
@@ -904,7 +986,7 @@ class Mdl_post extends CI_Model
 			return true;
 		}
 	}
-		
+	
 	/*
 	|
 	| ---------------------------------------------------------------
@@ -913,11 +995,81 @@ class Mdl_post extends CI_Model
 	|
 	*/
 	
-	function get_most_views($limit)
+	/*
+	Get most views page/post
+	*/
+	function get_most_view_post($post_type, $result, $post_status, $limit = 10, $limit_order = 0, $jooglo_paging = null)
 	{
-		$sql = "SELECT post_id,meta_value FROM $this->post_meta WHERE meta_key = 'count' ORDER BY meta_value_integer DESC LIMIT $limit";
-		$query = $this->db->query($sql);
-		return $query->result();
+		/*
+		model to get most views post
+		*/
+		
+		if ($result == 'total') {
+			$this->db->select($this->posts.'.id');
+		} else {
+			$this->db->select($this->posts.'.post_date,'.$this->posts.'.post_type,'.$this->posts.'.post_status,'.$this->posts.'.post_date_gmt,'.$this->posts.'.post_slug,'.$this->posts.'.post_author,'.$this->posts.'.id as ID,'.$this->posts.'.post_title');
+		}
+		
+		$this->db->from($this->posts);
+		$this->db->join($this->users, $this->users.'.id'.'='.$this->posts.'.post_author');
+		
+		# control post type result
+		if (!empty($post_type))
+		{
+			if ($post_status == 'all')
+			{
+				$this->db->where($this->posts.'.post_status', 'publish');
+				$this->db->where($this->posts.'.post_type', $post_type);
+				$this->db->or_where($this->posts.'.post_status', 'draft');
+				$this->db->where($this->posts.'.post_type', $post_type);
+			} 
+			else 
+			{
+				$this->db->where($this->posts.'.post_status', $post_status);
+				$this->db->where($this->posts.'.post_type', $post_type);
+			}
+		}
+		else
+		{
+			if ($post_status == 'all') 
+			{
+				$this->db->where($this->posts.'.post_status', 'publish');
+				$this->db->or_where($this->posts.'.post_status', 'draft');
+			} 
+			else 
+			{
+				$this->db->where($this->posts.'.post_status', $post_status);
+			}
+		}
+	
+		if ($result == 'total') 
+		{
+			return $this->db->get()->num_rows();
+		} 
+		else 
+		{
+			# override when jooglo paging on. 
+			if ($jooglo_paging == 'jooglo_paging_on')
+			{
+				if($limit_order == 0 || $limit_order == 1)
+				{
+					$page_post = 0;
+				} 
+				else 
+				{
+					$page_post = ($limit_order - 1) * $limit;
+				}
+				
+				$this->db->limit($limit, $page_post);
+			}
+			else
+			{
+				$this->db->limit($limit, $limit_order);
+			}
+			
+			$this->db->order_by('view', 'desc');
+			return $this->db->get()->result();
+		}
 	}
 }
 ?>

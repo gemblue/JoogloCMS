@@ -21,7 +21,7 @@
 			
 			<div class="bottom-space3">
 			<?php if(isset($search_result)): ?>
-				Found <strong><?php echo $num_rows; ?></strong> records by keyword "<strong><?php echo $keyword; ?></strong>".
+				Found <strong><?php echo $total; ?></strong> records by keyword "<strong><?php echo $keyword; ?></strong>".
 			<?php else: ?>
 				<ul class="nav nav-pills">
 					<li class="<?php echo ($this->uri->segment(4) == 'all' || $this->uri->segment(4) == '' ? 'active' : ''); ?>"><a href="<?php echo site_url('cms/admin/comment/all'); ?>">All</a></li>
@@ -35,7 +35,7 @@
 				<div class="alert alert-error">Record's not found..</div>
 			<?php else: ?>
 			
-				<span class="pull-right">Total: <b><?php echo $num_rows; ?></b></span>
+				<span class="pull-right">Total: <b><?php echo $total; ?></b></span>
 				<br/><br/>
 				<table class="table table-condensed table-striped table-bordered">
 					<thead>

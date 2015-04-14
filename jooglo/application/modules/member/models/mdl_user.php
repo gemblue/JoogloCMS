@@ -265,30 +265,37 @@ class Mdl_user extends CI_Model
 	|
 	*/
 	
-	function new_user($param, $user_role = 5, $status_user = 'inactive')
+	function insert_user($param)
 	{
 		/*
 		model to save new user
+		param:
+		
+		password
+		username
+		email
+		status
+		role id
 		*/
 
-		// Hash password
+		# hash password
 		$param['password'] = $this->nyan_auth->hash_password($param['password']);
 		
-		// Insert user master
+		# insert user master
 		$now = date('Y:m:d H:i:s');
-		$sql = "INSERT INTO $this->users (username,email,created_at,type,password,status) VALUES ('$param[username]','$param[email]','$now','default','$param[password]','$status_user')";
+		$sql = "INSERT INTO $this->users (username, email, created_at, password, status) VALUES ('$param[username]', '$param[email]', '$now', '$param[password]', '$param[status]')";
 		$query = $this->db->query($sql);
 		
-		// Get his id
+		# get his id
 		$user_id = $this->mdl_user->get_user_id($param['username'], 'username');
 		
-		# Give him role
-		$this->mdl_role->insert_user_role($user_id, $user_role);
+		# give him role
+		$this->mdl_role->insert_user_role($user_id, $param['role_id']);
 		
-		# Update user token meta
+		# update user token meta
 		$this->mdl_user->update_user_token($user_id);
 		
-		# Config email
+		# config email
 		$config = Array(
 		  'mailtype' => 'html',
 		  'charset' => 'iso-8859-1',
@@ -297,14 +304,14 @@ class Mdl_user extends CI_Model
 		
 		$this->load->library('email', $config);
 		
-		// Generate token
+		# generate token
 		$token = $this->mdl_user->get_user_meta($user_id, 'token');
 		
-		// Set message
+		# set message
 		$msg =  'Welcome to <b>'.$this->website.'</b>. Please follow this link below to complete your registration <br />
 		<a href='.site_url('u/activation/'.$token).'>'.site_url('u/activation/'.$token).'</a>';
 		
-		// Send email 		
+		# send email 		
 		$this->email->from('no-reply@'.$this->website, 'no-reply');
 		$this->email->to($param['email']);				
 		$this->email->subject('Register Confirmation');
@@ -544,32 +551,4 @@ class Mdl_user extends CI_Model
 		$query = $this->db->query($sql);
 		return true;
 	}
-	
-	/*
-	|
-	| ---------------------------------------------------------------
-	| ADDITIONAL / FORCE MODE
-	| ---------------------------------------------------------------
-	|
-	*/
-	
-	function force_register($username, $email, $id_role, $status)
-	{
-		/*
-		model to register user with simple param
-		*/
-
-		$now = date('Y:m:d H:i:s');
-		
-		$sql = "INSERT INTO $this->users (username,created_at,type,status) VALUES ('$username','$now','default','$status')";
-		$query = $this->db->query($sql);
-		
-		$user_id = $this->mdl_user->get_user_id($username, 'username');
-		
-		# set the role
-		$this->mdl_role->insert_user_role($user_id, $id_role);
-	
-		return true;
-	}
-	
 }

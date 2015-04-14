@@ -1,0 +1,201 @@
+/*
+Codepolitan Showcase Styles
+Author: Ahmad Oriza 
+*/
+
+/* Layout */
+html{
+background:#2F362F;
+padding:0px;
+margin:0px;
+}
+
+body{
+background:#ecf0f1;
+font-family: 'Raleway', sans-serif;
+}
+
+table tr td{
+padding-top:3px;
+}
+
+.logo{
+margin:auto;
+margin-top:50px;
+font-family: 'Yellowtail', cursive;
+font-size:70px;
+position:relative;
+width:300px;
+}
+
+.logo img{
+width:140px;
+position:absolute;
+top:-20px;
+right:70px;
+}
+
+a{
+color: #DA757D;
+}
+
+a:hover{
+color: #444;
+}
+
+.slogan{
+margin-bottom:60px;
+}
+
+.person-dude{
+background:#DA757D;
+color:#fff;
+padding:10px;
+}
+
+.person-dude a{
+color:#fff;
+}
+
+.main-nav{
+margin-bottom:20px;
+}
+
+.main-nav a{
+color:#DA757D;
+}
+
+.menu-top{
+margin-top:20px;
+margin-bottom:20px;
+}
+
+.header{
+margin-top:0px;
+background:#2F362F;
+color:#fff;
+}
+
+.header-mini{
+padding:10px;
+background:#2F362F;
+color:#fff;
+}
+
+.header-mini a{
+color:#fff;
+}
+
+.bottom{
+padding-top:80px;
+padding-bottom:80px;
+background:#408071;
+color:#fff;
+}
+
+.footer{
+background:#fff;
+padding-top:10px;
+padding-bottom:10px;
+}
+
+/* Button */
+.btn{
+border-radius:0px;
+-moz-border-radius:0px;	
+-webkit-border-radius:0px;
+}
+
+.btn-super-lg{
+padding:20px 80px 20px 80px;
+}
+
+.btn-primary{
+background:#408071;
+color:#fff;
+border:1px solid #408071;
+}
+
+.btn-primary:hover{
+background:#fff;
+color:#408071;
+border:1px solid #408071;
+}
+
+.btn-nyankod{
+background:#DA757D;
+color:#fff;
+border:1px solid #DA757D;
+}
+
+.btn-nyankod:hover{
+background:#fff;
+color:#DA757D;
+}
+
+.btn-active{
+background:#fff;
+color:#DA757D;
+border:1px solid #DA757D;
+}
+
+.btn-active:hover{
+background:#fff;
+color:#DA757D;
+border:1px solid #DA757D;
+}
+
+.btn-facebook{
+background:#3B5998;
+color:#fff;
+}
+
+.btn-twitter{
+background:#00ACED;
+color:#fff;
+}
+
+/* Text */
+.form-control{
+border-radius:0px;
+-moz-border-radius:0px;	
+-webkit-border-radius:0px;
+}
+
+/* Etc */
+.alert{
+border-radius:0px;
+-moz-border-radius:0px;	
+-webkit-border-radius:0px;
+}
+
+.badge{
+background:#DA757D;
+color:#fff;
+}
+
+.badge a{
+color:#fff;
+}
+
+.pagination ul li a{
+color:#444;
+}
+
+.paging-item{
+color:#444;
+}
+
+/* Helper */
+.margin-md-top{
+margin-top:20px;
+}
+
+.margin-lg-top{
+margin-top:40px;
+}
+.margin-lg-bottom{
+margin-bottom:40px;
+}
+
+

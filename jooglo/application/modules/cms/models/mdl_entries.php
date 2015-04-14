@@ -20,7 +20,7 @@ class Mdl_entries extends CI_Model
 	{
 		/*
 		model to get meta information by the entry type
-		this function returns array metas information that used by the entry type
+		this function returns array meta information that used by the entry type
 		*/
 		$sql = "SELECT id FROM $this->entries WHERE entry_type = '$entry_type' ORDER BY id DESC LIMIT 1";
 		$query = $this->db->query($sql);
@@ -48,7 +48,7 @@ class Mdl_entries extends CI_Model
 		}
 	}
 
-	function get_list_entry($entry_type,$limit)
+	function get_entries($entry_type,$limit)
 	{
 		/*
 		model to get the entries data with filter name

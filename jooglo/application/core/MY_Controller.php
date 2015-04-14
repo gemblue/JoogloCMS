@@ -7,8 +7,8 @@
 class MY_Controller extends CI_Controller
 {
 	public $url_source;
-	var $data = null;
-	var $template;
+	public $data = null;
+	public $template;
 
 	public function __construct()
 	{
@@ -34,10 +34,9 @@ class MY_Controller extends CI_Controller
 		$this->load->model('cms/mdl_options');
 		
 		// Load needed lib
-		$this->load->library('custom_page_template');
+		$this->load->library('cms/custom_page_template');
 		$this->load->library('mobile_detect');
-		$this->load->library('custom_show');
-		$this->load->library('paging');
+		$this->load->library('cms/paging');
 		
 		// Load comment module
 		$this->load->model('comment/mdl_comment');
@@ -49,6 +48,7 @@ class MY_Controller extends CI_Controller
 		$this->lang->load('jooglo', 'english');
 		
 		// Load helper
+		$this->load->helper('excerpt');
 		$this->load->helper('my_string');
 		$this->load->helper('pagination');
 		

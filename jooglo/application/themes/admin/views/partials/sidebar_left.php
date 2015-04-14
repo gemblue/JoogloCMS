@@ -105,7 +105,7 @@
 		<div id="menu_multi" class="accordion-body collapse <?php /* echo ($this->uri->segment(2) == 'custom' ? 'in' : ''); */ ?>">
 			<div class="accordion-inner">
 				<ul class="sub_main_menu">
-					<li><a href="<?php echo site_url('cms/admin/add_entry'); ?>">Add Entry Type</a></li>
+					<li><a href="<?php echo site_url('cms/admin/add_entry_type'); ?>">Add Entry Type</a></li>
 					<?php
 					$entry = $this->mdl_entries->get_all_entry_type();
 					foreach ($entry as $row)

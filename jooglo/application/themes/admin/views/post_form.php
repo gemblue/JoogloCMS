@@ -54,7 +54,7 @@
 				<?php endif;?>
 				
 			<?php endif;?>
-				
+			
 			<form id="post-form" method="post" action="<?php echo ($type_form_post == 'new' ? site_url('cms/admin/post_create') : site_url('cms/admin/post_update'));?>" enctype="multipart/form-data">
 					
 				<input type="hidden" name="post_type" value="<?php echo (isset($post_type) ? $post_type : ''); ?>">
@@ -94,7 +94,8 @@
 							
 						# the query
 						$cat_query = $this->mdl_taxonomy->get_all_terms($category_taxon); 
-													# show
+						
+						# show
 						echo '<select name="cat_id" id="cat_id" class="input">';
 							
 						foreach ($cat_query as $row)
@@ -146,27 +147,47 @@
 							<input type="text" id="featured_image" name="featured_image" value="<?php echo (!empty($featured_image)) ? $featured_image : ''?>" class="span6"  placeholder="Insert an image link or choose from media"/> <a href="<?php echo base_url('jooglo/plugins/filemanager/dialog.php?type=1&field_id=featured_image'); ?>" class="btn btn-iframe" type="button"><i class="icon-folder-open"></i></a>
 						</div>
 					</div>
-						
-					<?php if (!empty($featured_image)) :?>
-						<br/>
-						<img width="300" src="<?php echo $featured_image;?>" />
-						<br/><br/>
+					
+					<?php if (isset($featured_image)):?>
+						<?php if (site_url() == $featured_image) :?>
+							<br/>Featured image is not setted.
+						<?php else:?>
+							<br/><img width="300" src="<?php echo $featured_image;?>" /><br/><br/>
+						<?php endif;?>
 					<?php endif;?>
 				</div>
 					
 				<div class="bottom-space3">
 					<textarea name="post_content" class="input-block-level rte" rows="9" style="height:400px;"><?php echo (isset($post_content) ? $post_content : '');?></textarea>
 				</div>
-					
-				<div class="label-input">Meta Keyword</div>
-				<div class="bottom-space4">
-					<input type="text" name="metakey" value="<?php echo (isset($metakey) ? $metakey : '');?>" class="span6"  placeholder="Ex: The, Nice, Key"/>
-				</div>
-
-				<div class="label-input">Meta Description</div>
-				<div class="bottom-space4">
-					<input type="text" name="metadesc" value="<?php echo (isset($metadesc) ? $metadesc : '');?>" class="span6"  placeholder="The simple description"/>
-				</div>
+				
+				<!-- Meta field / Custom field -->
+				<?php
+				foreach ($meta_information as $row => $value)
+				{
+					# get meta value
+					if ($type_form_post == 'edit')
+					{
+						$meta_value = $this->mdl_post->get_post_meta($post_id, $value['meta_key']);	
+						?>
+						<div class="label-input"><?php echo ucfirst(str_replace('_',' ',$value['meta_key']));?> <a href="<?php echo site_url('cms/admin/delete_field_entry/'.$value['meta_key'].'/'.$post_id.'/'.$current_url_encode)?>">[x]</a></div>
+						<div class="bottom-space4">
+						<input type="text" name="<?php echo $value['meta_key'];?>" value="<?php echo (isset($meta_value) ? $meta_value : ''); ?>" class="span6" />
+						</div>
+						<?php
+					}
+					else
+					{
+						$meta_value = null;
+						?>
+						<div class="label-input"><?php echo ucfirst(str_replace('_',' ',$value['meta_key']));?></div>
+						<div class="bottom-space4">
+						<input type="text" name="<?php echo $value['meta_key'];?>" value="<?php echo (isset($meta_value) ? $meta_value : ''); ?>" class="span6" />
+						</div>
+						<?php
+					}
+				}
+				?>
 					
 				<div class="label-input">Tags</div>
 				<div class="bottom-space4">
@@ -181,6 +202,7 @@
 						<option value="default">Default</option>
 						<?php
 						$post_template = $this->mdl_post->get_post_meta($post_id, 'post_template');
+						
 						foreach ($custom_page_template as $row)
 						{
 							?>
@@ -189,6 +211,7 @@
 						}
 						?>
 					</select>
+					<?php echo $post_template;?>
 				</div>
 				<?php endif?>
 				<!--Close-->
@@ -202,7 +225,21 @@
 					</select>
 				</div>
 				<?php endif ?>
-
+				
+				<div id="extra_field_dynamic">
+				<!-- Content by Js -->
+				</div>
+				
+				<!-- Custom Field -->
+				<input type="button" value="I Need More Field" id="btn_opn_new_field" class="btn btn-la btn-space2"/>
+				<br/><br/>
+				<div id="form_new_field">
+				<div class="label-input">Field Name</div>
+				<input type="text" id="field_name" class="span6" /><br/>
+				<input type="button" value="Add New" id="btn_new_field" class="btn btn-la btn-space2"/>
+				</div>
+				<br/><br/>
+				
 				<button type="submit" class="btn btn-la btn-large btn-space1">Save</button>
 					
 				<?php if (!isset($post_status)): ?>

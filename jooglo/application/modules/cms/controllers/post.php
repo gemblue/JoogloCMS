@@ -6,7 +6,7 @@ The controller that handle page/post show
 
 class Post extends Frontend_Controller
 {
-	public $init_control_function = array('category', 'search');
+	public $init_control_function = array('category', 'search', 'tags');
 	
 	public function __construct()
 	{
@@ -54,7 +54,7 @@ class Post extends Frontend_Controller
 			->view('home', $this->data);
 	}
 
-	// Show category/loop page
+	// Show category loop page
 	function category($param_one = null, $param_two = null, $param_three = null)
 	{
 		// Check, if get variable p is exist
@@ -111,12 +111,11 @@ class Post extends Frontend_Controller
 		$post_id = $this->mdl_post->get_post_id($slug);
 			
 		// Update view counter ...
+		$this->mdl_post->update_view($post_id);
 			
 		// Set data post/page support
 		$this->data['metadesc'] = $this->mdl_post->get_post_meta($post_id, 'meta_description');
 		$this->data['metakey'] = $this->mdl_post->get_post_meta($post_id, 'meta_keyword');
-		$this->data['og_image'] = $this->mdl_post->get_post_meta($post_id, 'thumbnail', 'md');
-		$this->data['slug'] = $slug;
 		$this->data['post_id'] = $post_id;
 		$this->data['is_single'] = true;
 		$this->data['draft_mode_html'] = '';
@@ -129,14 +128,31 @@ class Post extends Frontend_Controller
 			if ($this->data['post_data'][0]->post_status == 'draft')
 			{
 				$this->data['draft_mode_html'] = '
-				<div class="jooglo_draft_mode" style="font-family:arial;opacity:0.5;z-index:99999;position:absolute;top:120px;left:0px;padding:10px;background:#444;color:#fff;">
+				<div class="jooglo_draft_mode" style="font-family:arial;opacity:0.5;z-index:99999;position:fixed;top:120px;left:0px;padding:10px;background:#444;color:#fff;">
 					Draft Mode<br/>
 				</div>';
 			}
 		}
 		else
 		{
-			$this->data['post_data'] =  $this->mdl_post->get_single_post('publish', 'post_slug', $slug);
+			// If active user is post author, allow him to see his post.
+			$post_author = $this->mdl_post->get_post_author('ID', $post_id);
+			if ($this->data['user_id'] == $post_author)
+			{
+				$this->data['post_data'] =  $this->mdl_post->get_single_post(null, 'post_slug', $slug);
+				
+				if ($this->data['post_data'][0]->post_status == 'draft')
+				{
+					$this->data['draft_mode_html'] = '
+					<div class="jooglo_draft_mode" style="font-family:arial;opacity:0.5;z-index:99999;position:fixed;top:120px;left:0px;padding:10px;background:#444;color:#fff;">
+						Draft Mode | Your post<br/>
+					</div>';
+				}
+			}
+			else
+			{
+				$this->data['post_data'] =  $this->mdl_post->get_single_post('publish', 'post_slug', $slug);
+			}
 		}
 			
 		if (empty($this->data['post_data']))
@@ -152,28 +168,30 @@ class Post extends Frontend_Controller
 				$this->data['comment_enable'] = $row->comment_status;
 				$this->data['thumbnail'] = $this->mdl_post->get_post_meta($row->ID, 'thumbnail');
 				$this->data['content'] = $row->post_content;
+				$this->data['status'] = $row->post_status;
 				$this->data['type'] = $row->post_type;
+				$this->data['slug'] = $row->post_slug;
 				$this->data['title'] = $row->post_title;
 				$this->data['date'] = $row->post_date;
 				$this->data['parent'] = $row->post_parent;
 				$this->data['author'] = $row->post_author;
 			}
-			
+	
 			// Check if the slug is page? process with page logic
 			if ($this->mdl_post->is_this_page($slug))
-			{
+			{	
 				// Check is the page has been set with custom page template ?
-				if ($this->custom_page_template->is_this_use_custom($slug))
+				if ($this->custom_page_template->is_this_use_custom($post_id))
 				{
 					// Custom page template activate
-					$the_page_template = $this->mdl_post->get_post_meta($post_id, 'template');
+					$the_page_template = $this->mdl_post->get_post_meta($post_id, 'post_template');
 				}
 				else
 				{
 					// Default template page activate
 					$the_page_template = 'page';
 				}
-					
+				
 				$this->template
 					->set_partial('header', 'header')
 					->set_partial('footer', 'footer')
@@ -183,8 +201,17 @@ class Post extends Frontend_Controller
 			{	
 				// Else process with post logic
 				$this->data['category'] = $this->mdl_taxonomy->get_post_category($post_id);
-				$this->data['tags'] = $this->mdl_taxonomy->get_post_tags($post_id);
-						
+				$this->data['tags_array'] = $this->mdl_taxonomy->get_post_tags($post_id);
+				
+				$tags = null;
+				
+				foreach ($this->data['tags_array'] as $row)
+				{
+					$tags .= $row->name.', ';
+				}
+				
+				$this->data['tags']  = $tags;
+				
 				$this->template
 					->set_partial('header', 'header')
 					->set_partial('footer', 'footer')
@@ -196,46 +223,86 @@ class Post extends Frontend_Controller
 		}
 	}
 	
-	// Search handle
-	function search($type = 'basic', $keyword = null, $page = 1)
+	// Show tags loop page
+	function tags($tag_slug = null)
 	{
-		$limit = 15;
-		$this->data['is_search'] = true;
+		$this->data['total'] = $this->mdl_post->get_post_by_term($tag_slug, 'total', 'publish', 'post_tag');
 		
-		if (isset($_GET['s']) && $_GET['s'] != '')
-		{
-			if(isset($_GET['p']) && $_GET['p'] != '')
-			{
-				$page = $_GET['p'];
-			} 
-			else
-			{
-				$page = 1;
-			}
-				
-			$this->data['search_data'] = true;
-			$this->data['search_item'] = $_GET['s'];
+		// Paging
+		$config['base_url'] = site_url('tags/'.$tag_slug);
+		$config['total_rows'] = $this->data['total']; 
+		$config['per_page'] = 2; 
+		$config['uri_segment'] = 3;
+		$config['full_tag_open'] = '<div class="pagination">';
+		$config['full_tag_close'] = '</div>';
+		$config['first_link'] = '<i class="icon-long-arrow-left"></i> First';
+		$config['first_tag_open'] = '<li>';
+		$config['first_tag_close'] = '</li>';
+		$config['last_link'] = 'Last <i class="icon-long-arrow-right"></i>';
+		$config['last_tag_open'] = '<li>';
+		$config['last_tag_close'] = '</li>';
+		$config['next_link'] = 'Next';
+		$config['next_tag_open'] = '<li>';
+		$config['next_tag_close'] = '</li>';
+		$config['prev_link'] = 'Prev';
+		$config['prev_tag_open'] = '<li>';
+		$config['prev_tag_close'] = '</li>';
+		$config['cur_tag_open'] = '<li class="active"><a href="//" class="paging-item">';
+		$config['cur_tag_close'] = '</a></li>';
+		$config['num_tag_open'] = '<li>';
+		$config['num_tag_close'] = '</li>';
+		
+		$this->pagination->initialize($config); 
+		$this->data['pagination'] = $this->pagination->create_links();
+		
+		// Query
+		$this->data['results'] =  $this->mdl_post->get_post_by_term($tag_slug, 'array', 'publish', 'post_tag', $config['per_page'], $this->uri->segment(3));
+		
+		$this->template
+			->set_partial('header', 'header')
+			->set_partial('footer', 'footer')
+			->view('tags', $this->data);
+	}
+	
+	// Search handle
+	function search($keyword = null)
+	{
+		$this->data['keyword'] = urldecode($keyword);
+		$this->data['total'] = $this->mdl_post->search_post($this->data['keyword'], 'total', 'product', 'publish');
+		
+		// Paging
+		$config['base_url'] = site_url('search/'.$keyword);
+		$config['total_rows'] = $this->data['total']; 
+		$config['per_page'] = 2; 
+		$config['uri_segment'] = 3;
+		$config['full_tag_open'] = '<div class="pagination">';
+		$config['full_tag_close'] = '</div>';
+		$config['first_link'] = '<i class="icon-long-arrow-left"></i> First';
+		$config['first_tag_open'] = '<li>';
+		$config['first_tag_close'] = '</li>';
+		$config['last_link'] = 'Last <i class="icon-long-arrow-right"></i>';
+		$config['last_tag_open'] = '<li>';
+		$config['last_tag_close'] = '</li>';
+		$config['next_link'] = 'Next';
+		$config['next_tag_open'] = '<li>';
+		$config['next_tag_close'] = '</li>';
+		$config['prev_link'] = 'Prev';
+		$config['prev_tag_open'] = '<li>';
+		$config['prev_tag_close'] = '</li>';
+		$config['cur_tag_open'] = '<li class="active"><a href="//">';
+		$config['cur_tag_close'] = '</a></li>';
+		$config['num_tag_open'] = '<li>';
+		$config['num_tag_close'] = '</li>';
 
-			$this->data['post_data'] = $this->mdl_post->search_post($this->data['search_item'], 'array', null, 'publish', $limit, $page);
-			$this->data['count'] = $this->mdl_post->search_post($this->data['search_item'], 'total', null, 'publish', $limit, $page);
-		} 
-		else 
-		{
-			$this->data['search_data'] = false;
-		}
-			
-		// Check is template search exist ? if exist show, if no set not found
-		$file_path = 'application/views/'.$this->data['template_name'].'search.php';
-
-		$check = file_exists($file_path);
-
-		if(!$check)
-		{
-			redirect();
-		}
-		else
-		{
-			$this->load->view($this->data['template_name'].'search', $this->data);
-		}
+		$this->pagination->initialize($config); 
+		$this->data['pagination'] = $this->pagination->create_links();
+		
+		// Query
+		$this->data['results'] = $this->mdl_post->search_post($this->data['keyword'], 'array', 'product', 'publish', $config['per_page'], $this->uri->segment(3));
+		
+		$this->template
+			->set_partial('header', 'header')
+			->set_partial('footer', 'footer')
+			->view('search', $this->data);
 	}
 }

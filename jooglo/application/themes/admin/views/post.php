@@ -79,7 +79,18 @@
 						<tr>
 							<td><input id="checkbox_<?php echo $i;?>" name="record[]" class="record" type="checkbox"  value="<?php echo $row->ID?>" /></td>
 							<td>
-								<div><?php echo $row->post_title; ?></div>
+								
+								<?php
+								if (isset($search_mode) && $search_mode == true)
+								{
+									?><div><?php echo str_replace($keyword, '<b>'.$keyword.'</b>', $row->post_title); ?></div><?php
+								}
+								else
+								{
+									?><div><?php echo $row->post_title; ?></div><?php
+								}
+								?>
+								
 								<?php if($row->post_status == 'trash'): ?>
 									<div class="t6"><a href="<?php echo $link_restore; ?>">Restore</a> | <a href="<?php echo $link_delete; ?>">Delete</a></div>
 								<?php else: ?>
@@ -87,7 +98,6 @@
 									<br/>									
 									<div></div>									
 								<?php endif ?>
-								
 							</td>
 							
 							<?php if ($post_type != 'page'):?>
@@ -140,8 +150,6 @@
 						<button action="draft" class="btn-bulk btn btn-la">Set Draft</button>
 						</div>
 					<?php endif;?>
-					
-					
 					
 					<!-- Pagination -->
 					<?php if(isset($pagination)){ ?>

@@ -2,27 +2,17 @@
 
 class Nyan_auth {
 
-	var $ci = null;
-
-	// Setting
+	var $ci;
 	var $table 			= 'jooglo_users';
-	var $id_field 		= 'id';
+	var $field_id 		= 'id';
 	var $username_field = 'username';
 	var $password_field = 'password';
 	var $email_field 	= 'email';
 	var $status 		= 'status';
-
-	// If want login with username or email give true value.
-	var $double_check = true;
-
-	// Hash method and salt
-	var $hash = array(
-					'use_hash' => true, 
-					'use_salt' => true,
-					'salt' => '$aJ1t4',
-					'hash_method' => 'md5'
-				);
-				
+	var $double_check 	= true; // If want login with username or email give true value.
+	var $salt 			= '$aJ1t4';
+	var $website 		= 'codelokal.codepolitan.com';
+	
 	/*
 	 * Function Constructor
 	 */
@@ -57,24 +47,14 @@ class Nyan_auth {
 	 */
 	function login($param1 = null, $param2 = null)
 	{
-		# hash control
-		if ($this->hash['use_hash'] == true)
-		{
-			if ($this->hash['hash_method'] == 'md5')
-			{
-				if ($this->hash['use_salt'] == true) {
-					$param2 = md5($param2.$this->hash['salt']);
-				} else {
-					$param2 = md5($param2);
-				}
-			}
-		}
-			
+		# hash param2
+		$param2 = md5($param2.$this->salt);
+				
 		# check
 		$this->ci->db->from($this->table);
 		$this->ci->db->where($this->email_field, $param1);
 		$this->ci->db->where($this->password_field, $param2);
-		$this->ci->db->where($this->status,'active');
+		$this->ci->db->where($this->status, 'active');
 		$query = $this->ci->db->get();
 			
 		# user is registered
@@ -97,6 +77,7 @@ class Nyan_auth {
 						 'role_id' => $role_id,
 						 'logged_in' => true
 					   );
+					   
 			$this->ci->session->set_userdata($newdata);
 			
 			# update last login
@@ -163,18 +144,24 @@ class Nyan_auth {
 	 *
 	 * @return 	true : success
 	 */
-	function force_login($user_id)
+	function force_login($user_id, $force_username = null)
 	{
 		$username = $this->ci->mdl_user->get_username($user_id, 'id');
 		$role_id = $this->ci->mdl_role->get_user_role($user_id);
 		
+		# override
+		if ($force_username != null)
+		{
+			$username = $force_username;
+		}
+		
 		# give session
 		$newdata = array(
-						 'username'  => $username,
-					 	 'id' => $user_id,
-						 'role_id' => $role_id,
-						 'logged_in' => true
-					   );
+			'username'  => $username,
+			'id' => $user_id,
+			'role_id' => $role_id,
+			'logged_in' => true
+		);
 					   
 		$this->ci->session->set_userdata($newdata);
 		
@@ -194,19 +181,7 @@ class Nyan_auth {
 	 */	
 	function hash_password($password)
 	{
-		# hash control
-		if ($this->hash['use_hash'] == true)
-		{
-			if ($this->hash['hash_method'] == 'md5')
-			{
-				if ($this->hash['use_salt'] == true) {
-					$password = md5($password.$this->hash['salt']);
-				} else {
-					$password = md5($password);
-				}
-			}
-		}
-			
+		$password = md5($password.$this->salt);
 		return $password;
 	}
 	
@@ -221,24 +196,11 @@ class Nyan_auth {
 	{
 		$this->ci->load->helper('string');
 		$password = random_string('alnum', 5);
+		$password_hash = md5($password.$this->salt);
 		
-		# hash control
-		if ($this->hash['use_hash'] == true)
-		{
-			if ($this->hash['hash_method'] == 'md5')
-			{
-				if ($this->hash['use_salt'] == true) {
-					$password_hash = md5($password.$this->hash['salt']);
-				} else {
-					$password_hash = md5($password);
-				}
-			}
-		}
-			
-		$sql = "UPDATE $this->table SET $this->password_field = '$password_hash' WHERE $this->id_field = '$user_id'";
-		$this->ci->db->query($sql);
-		
+		$this->ci->mdl_user->update_user_password($password_hash, $user_id);
 		$result = array ('message' => 'done', 'password' => $password);
+		
 		return $result;
 	}
 	
@@ -254,8 +216,6 @@ class Nyan_auth {
 		$user_id = $this->ci->mdl_user->get_user_id($email, 'email');
 		$this->ci->mdl_user->update_user_token($user_id);
 	
-		$website = 'devository.com';
-		
 		$config = Array(
 		  'protocol' => 'smtp',
 		  'smtp_host' => 'ssl://smtp.googlemail.com',
@@ -273,7 +233,7 @@ class Nyan_auth {
 		{
 			$token = $this->ci->mdl_user->get_user_meta($user_id, 'token');
 			
-			$msg =  'You have requested to reset your password in <b>'.$website.'</b>. Please follow this link below to complete your request <br />
+			$msg =  'You have requested to reset your password in <b>'.$this->website.'</b>. Please follow this link below to complete your request <br />
 					 <a href='.site_url('u/forgot/confirmation/'.$token).'>'.site_url('u/forgot/confirmation/'.$token).'</a><br/><br/>
 					 Please Ignore if you don&acutet.';
 					 ;
@@ -282,7 +242,7 @@ class Nyan_auth {
 		}
 		else if ($type == 'reset-completed')
 		{
-			$msg =  'You have requested to reset your password in <b>'.$website.'</b>. Below, your new password <br />'.
+			$msg =  'You have requested to reset your password in <b>'.$this->website.'</b>. Below, your new password <br />'.
 					'Password :'.$password.'<br/><br/>Thank you.';
 		
 			$subject = 'Password Reset - Completed';
@@ -293,7 +253,7 @@ class Nyan_auth {
 		}
 		
 		$this->ci->email->set_newline("\r\n");
-		$this->ci->email->from('no-reply@'.$website);
+		$this->ci->email->from('no-reply@'.$this->website);
 		$this->ci->email->to($email);
 										
 		$this->ci->email->subject($subject);
